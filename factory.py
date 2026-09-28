@@ -602,30 +602,75 @@ def escape_html(s: str) -> str:
 
 def readme(spec: dict) -> str:
     name = spec["name"]
-    return f'''# {name}
+    desc = spec["description"]
+    cat = spec["category"]
+    site = f"https://{OWNER}.github.io/{name}/"
+    repo = f"https://github.com/{OWNER}/{name}"
+    return f'''<p align="center">
+  <img src="docs/logo.svg" alt="{name} logo" width="128" height="128">
+</p>
 
-{spec["description"]}
+# {name}
 
-**Site:** https://{OWNER}.github.io/{name}/
+<p align="center">
+  <strong>{desc}</strong>
+</p>
 
-## Install / run
+<p align="center">
+  <a href="{site}"><img src="https://img.shields.io/badge/docs-live-0B1F33?style=for-the-badge&labelColor=C9A227" alt="Docs"></a>
+  <a href="{repo}/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/release-v1.0.0-success?style=for-the-badge" alt="Release"></a>
+  <a href="{repo}/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="License"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D18-informational?style=for-the-badge" alt="Node">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-1.0.0-0B1F33.svg" alt="version">
+  <img src="https://img.shields.io/badge/category-{cat}-C9A227.svg" alt="category">
+  <img src="https://img.shields.io/badge/deps-zero-brightgreen.svg" alt="deps">
+  <img src="https://img.shields.io/badge/pages-enabled-222.svg" alt="pages">
+</p>
+
+## Why this exists
+
+`{name}` is a purpose-built `{cat}` toolkit: {desc}
+
+- Zero runtime dependencies
+- Library API + stdin-friendly CLI
+- Local-first (no network, no telemetry)
+- Docs site on GitHub Pages
+
+## Quick start
 
 ```bash
-git clone https://github.com/{OWNER}/{name}.git
+git clone {repo}.git
 cd {name}
-node src/cli.js
 node --test
+node src/cli.js
 ```
+
+Live docs: **[{site}]({site})**
 
 ## API
 
-Library entrypoint: [`src/index.js`](./src/index.js)
+| Area | Path |
+| --- | --- |
+| Library | [`src/index.js`](./src/index.js) |
+| CLI | [`src/cli.js`](./src/cli.js) |
+| Tests | [`src/index.test.js`](./src/index.test.js) |
 
-Category: `{spec["category"]}` · Version `{spec["version"]}`
+Category: `{cat}` · Release line: `v1.0.0`
+
+## Documentation
+
+- [CHANGELOG.md](./CHANGELOG.md) — release history
+- [ACQUISITION.md](./ACQUISITION.md) — diligence brief
+- [CONTRIBUTING.md](./CONTRIBUTING.md) · [SUPPORT.md](./SUPPORT.md) · [SECURITY.md](./SECURITY.md)
 
 ## License
 
 MIT — see [LICENSE](./LICENSE).
+
+<p align="center"><img src="docs/logo.svg" width="48" alt="{name}"><br><sub>{name} · v1.0.0 · MIT</sub></p>
 '''
 
 
@@ -699,6 +744,63 @@ def write_repo(spec: dict, dest: Path) -> None:
     (dest / "docs" / ".nojekyll").write_text("", encoding="utf-8")
     (dest / "README.md").write_text(readme(spec), encoding="utf-8")
     (dest / "ACQUISITION.md").write_text(acquisition(spec), encoding="utf-8")
+    (dest / "CHANGELOG.md").write_text(
+        f"""# Changelog
+
+## [1.0.0] — 2026-09-28
+
+### Added
+- First stable release of `{name}` (`{spec["category"]}` toolkit)
+- {spec["description"]}
+- Official logo at `docs/logo.svg`
+- Library + CLI + `node:test` smoke suite
+- GitHub Pages documentation under `docs/`
+- Diligence docs: ACQUISITION, CONTRIBUTING, SUPPORT, SECURITY
+
+[1.0.0]: https://github.com/{OWNER}/{name}/releases/tag/v1.0.0
+""",
+        encoding="utf-8",
+    )
+    (dest / "CONTRIBUTING.md").write_text(
+        f"""# Contributing to {name}
+
+```bash
+git clone https://github.com/{OWNER}/{name}.git
+cd {name}
+node --test
+node src/cli.js
+```
+
+Keep the toolkit zero-dependency. Preserve `run(argv)` or bump major. Update CHANGELOG for user-visible changes.
+""",
+        encoding="utf-8",
+    )
+    (dest / "SUPPORT.md").write_text(
+        f"""# Support — {name}
+
+1. Read the README and https://{OWNER}.github.io/{name}/
+2. Check CHANGELOG and the v1.0.0 release notes
+3. Open a GitHub Issue with Node version, command, and expected vs actual output
+
+Security issues: see SECURITY.md
+""",
+        encoding="utf-8",
+    )
+    (dest / "SECURITY.md").write_text(
+        f"""# Security policy — {name}
+
+| Version | Supported |
+| --- | --- |
+| 1.0.x | yes |
+
+Report vulnerabilities privately via GitHub Security Advisories on https://github.com/{OWNER}/{name} when available.
+""",
+        encoding="utf-8",
+    )
+    (dest / "NOTICE").write_text(
+        f"{name}\nCopyright (c) 2026 {OWNER}\n\nReleased under the MIT License.\n",
+        encoding="utf-8",
+    )
     (dest / "LICENSE").write_text(license_text(), encoding="utf-8")
     (dest / ".github" / "FUNDING.yml").write_text(
         "github: [theworker02]\nthanks_dev: u/gh/theworker02\n", encoding="utf-8"
@@ -706,7 +808,7 @@ def write_repo(spec: dict, dest: Path) -> None:
     (dest / ".gitignore").write_text("node_modules/\n.DS_Store\n", encoding="utf-8")
     pkg = {
         "name": f"@{OWNER}/{name}",
-        "version": spec["version"],
+        "version": "1.0.0",
         "private": True,
         "description": spec["description"],
         "bin": {name: "src/cli.js"},
@@ -816,6 +918,41 @@ def create_one(spec: dict) -> dict:
             return {"name": name, "status": "error", "error": err[-500:]}
 
         enable_pages(name)
+        # Tag + GitHub Release v1.0.0 with detailed notes
+        notes = (
+            f"# {name} v1.0.0 — first stable release\n\n"
+            f"{spec['description']}\n\n"
+            f"## Highlights\n\n"
+            f"- Stable `run(argv)` library API + CLI\n"
+            f"- Official logo in `docs/logo.svg` (README + Pages)\n"
+            f"- Docs: https://{OWNER}.github.io/{name}/\n"
+            f"- Zero runtime dependencies (Node.js 18+)\n"
+            f"- Diligence pack: CHANGELOG, ACQUISITION, SUPPORT, SECURITY, CONTRIBUTING\n\n"
+            f"## Category\n\n`{spec['category']}`\n\n"
+            f"## Install\n\n```bash\n"
+            f"git clone https://github.com/{OWNER}/{name}.git\n"
+            f"cd {name}\ngit checkout v1.0.0\nnode --test\nnode src/cli.js\n```\n"
+        )
+        notes_path = work / "release-notes.md"
+        notes_path.write_text(notes, encoding="utf-8")
+        run(["git", "tag", "-f", "v1.0.0"], cwd=repo_dir, check=False)
+        run(["git", "push", "-f", "origin", "v1.0.0"], cwd=repo_dir, check=False)
+        run(
+            [
+                "gh",
+                "release",
+                "create",
+                "v1.0.0",
+                "-R",
+                f"{OWNER}/{name}",
+                "--title",
+                f"{name} v1.0.0 — first stable release",
+                "--notes-file",
+                str(notes_path),
+                "--latest",
+            ],
+            check=False,
+        )
         with LOCK:
             with PROGRESS.open("a", encoding="utf-8") as f:
                 f.write(json.dumps({"name": name, "category": spec["category"], "t": time.time()}) + "\n")
@@ -900,19 +1037,21 @@ def main():
                 flush=True,
             )
             if rate_hits:
-                # Do not rewind the whole batch (successful names already exist).
-                # Exponential backoff + single-repo probe before resuming the pool.
-                base = int(os.environ.get("PORTFOLIO_BACKOFF_SECS", "1800"))
-                with RATE_LIMIT_LOCK:
-                    hits = RATE_LIMIT_HITS
-                sleep_for = min(7200, base * max(1, hits // 3))
-                print(f"[backoff] sleeping {sleep_for}s after {rate_hits} rate-limit hits (total_hits={hits})", flush=True)
-                time.sleep(sleep_for)
-                # Probe with one create before opening the worker pool again.
+                # Chunked backoff: probe every PORTFOLIO_PROBE_SECS so we resume
+                # as soon as GitHub lifts "too many repositories, too quickly".
+                probe_every = int(os.environ.get("PORTFOLIO_PROBE_SECS", "120"))
+                max_backoff = int(os.environ.get("PORTFOLIO_BACKOFF_SECS", "7200"))
+                waited = 0
+                print(
+                    f"[backoff] chunked probe every {probe_every}s after {rate_hits} rate-limit hits",
+                    flush=True,
+                )
                 while True:
                     current = public_count()
                     if current >= TARGET:
                         break
+                    time.sleep(probe_every)
+                    waited += probe_every
                     probe_spec = None
                     created_set = {
                         x.strip().lower()
@@ -920,8 +1059,8 @@ def main():
                     }
                     while idx < len(catalog):
                         cand = catalog[idx]
-                        idx += 1
                         if cand["name"].lower() in created_set:
+                            idx += 1
                             continue
                         probe_spec = cand
                         break
@@ -929,19 +1068,22 @@ def main():
                         more = generate_catalog(200, taken)
                         catalog.extend(more)
                         continue
-                    print(f"[probe] trying {probe_spec['name']}", flush=True)
+                    print(f"[probe] t+{waited}s trying {probe_spec['name']}", flush=True)
                     probe_res = create_one(probe_spec)
                     print(f"[probe] {probe_res}", flush=True)
                     if probe_res["status"] == "ok":
                         ok += 1
                         taken.add(probe_spec["name"])
+                        idx += 1
+                        print(f"[backoff] lifted after {waited}s", flush=True)
                         break
-                    if probe_res["status"] in {"rate_limit", "error"} and "too many" in str(probe_res.get("error", "")).lower():
-                        sleep_for = min(7200, sleep_for + 600)
-                        print(f"[probe] still throttled; sleeping {sleep_for}s", flush=True)
-                        time.sleep(sleep_for)
+                    if probe_res["status"] == "exists":
+                        idx += 1
                         continue
-                    # exists or other — keep probing next
+                    if waited >= max_backoff:
+                        print(f"[backoff] reached max {max_backoff}s; continuing anyway", flush=True)
+                        break
+                    # still throttled — retry same candidate next interval
                     continue
             else:
                 with RATE_LIMIT_LOCK:

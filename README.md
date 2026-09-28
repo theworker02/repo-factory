@@ -1,22 +1,21 @@
 # repo-factory
 
-High-throughput publisher for focused Node toolkits under `theworker02`.
+High-throughput publisher for focused Node toolkits under `theworker02`, plus a **v1.0 thickener** that expands docs, logos, badges, and GitHub Releases.
 
-Each generated repository includes:
+## Scripts
 
-- Working zero-dependency library + CLI (`src/`)
-- Tests via `node:test`
-- Polished GitHub Pages site in `docs/`
-- MIT license and `.github/FUNDING.yml`
+| Script | Purpose |
+| --- | --- |
+| `factory.py` | Create unique tool repos with Pages + v1.0.0 release |
+| `thicken.py` | Retrofit existing repos: thick README, logo, badges, CHANGELOG, diligence docs, `v1.0.0` release |
 
 ## Run
 
 ```bash
 export PORTFOLIO_TARGET=4000
 export PORTFOLIO_WORKERS=2
-export PORTFOLIO_BACKOFF_SECS=1200
-export PORTFOLIO_PACE_SECS=8
 python3 -u factory.py
-```
 
-`fix_pages.py` enables `/docs` Pages for existing public repos missing a live site.
+export THICKEN_WORKERS=4
+python3 -u thicken.py
+```
