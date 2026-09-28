@@ -842,6 +842,7 @@ def wait_for_rate_limit():
 
 
 def main():
+    global RATE_LIMIT_HITS
     print(f"[factory] target public repos = {TARGET}, workers={WORKERS}", flush=True)
     taken = existing_names()
     print(f"[factory] existing names tracked: {len(taken)}", flush=True)
@@ -899,15 +900,55 @@ def main():
                 flush=True,
             )
             if rate_hits:
-                # GitHub "too many repositories, too quickly" — back off hard, then resume.
-                # Put failed names back for retry by rewinding idx for rate-limited batch.
-                idx = max(0, idx - batch_n)
-                sleep_for = int(os.environ.get("PORTFOLIO_BACKOFF_SECS", "900"))
-                print(f"[backoff] sleeping {sleep_for}s after {rate_hits} rate-limit hits", flush=True)
+                # Do not rewind the whole batch (successful names already exist).
+                # Exponential backoff + single-repo probe before resuming the pool.
+                base = int(os.environ.get("PORTFOLIO_BACKOFF_SECS", "1800"))
+                with RATE_LIMIT_LOCK:
+                    hits = RATE_LIMIT_HITS
+                sleep_for = min(7200, base * max(1, hits // 3))
+                print(f"[backoff] sleeping {sleep_for}s after {rate_hits} rate-limit hits (total_hits={hits})", flush=True)
                 time.sleep(sleep_for)
+                # Probe with one create before opening the worker pool again.
+                while True:
+                    current = public_count()
+                    if current >= TARGET:
+                        break
+                    probe_spec = None
+                    created_set = {
+                        x.strip().lower()
+                        for x in (CREATED.read_text().splitlines() if CREATED.exists() else [])
+                    }
+                    while idx < len(catalog):
+                        cand = catalog[idx]
+                        idx += 1
+                        if cand["name"].lower() in created_set:
+                            continue
+                        probe_spec = cand
+                        break
+                    if probe_spec is None:
+                        more = generate_catalog(200, taken)
+                        catalog.extend(more)
+                        continue
+                    print(f"[probe] trying {probe_spec['name']}", flush=True)
+                    probe_res = create_one(probe_spec)
+                    print(f"[probe] {probe_res}", flush=True)
+                    if probe_res["status"] == "ok":
+                        ok += 1
+                        taken.add(probe_spec["name"])
+                        break
+                    if probe_res["status"] in {"rate_limit", "error"} and "too many" in str(probe_res.get("error", "")).lower():
+                        sleep_for = min(7200, sleep_for + 600)
+                        print(f"[probe] still throttled; sleeping {sleep_for}s", flush=True)
+                        time.sleep(sleep_for)
+                        continue
+                    # exists or other — keep probing next
+                    continue
             else:
-                # Steady pace to stay under create burst limits.
-                time.sleep(float(os.environ.get("PORTFOLIO_PACE_SECS", "3")))
+                with RATE_LIMIT_LOCK:
+                    # decay hit counter on healthy batches
+                    if RATE_LIMIT_HITS > 0:
+                        RATE_LIMIT_HITS = max(0, RATE_LIMIT_HITS - 1)
+                time.sleep(float(os.environ.get("PORTFOLIO_PACE_SECS", "12")))
 
     print(f"[factory] done session ok={ok} err={err} public={public_count()}", flush=True)
     return 0
