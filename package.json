@@ -1,0 +1,22 @@
+{
+  "name": "@theworker02/repo-factory",
+  "version": "1.0.0",
+  "description": "repo-factory \u2014 a focused developer toolkit.",
+  "license": "MIT",
+  "homepage": "https://theworker02.github.io/repo-factory/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/theworker02/repo-factory.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "repo-factory",
+    "toolkit",
+    "cli",
+    "nodejs",
+    "v1",
+    "stable"
+  ]
+}
